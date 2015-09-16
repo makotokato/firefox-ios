@@ -148,6 +148,12 @@ class TabManager : NSObject {
         assert(tab === selectedTab, "Expected tab is selected")
         selectedTab?.createWebview()
 
+        // If this tab was marked as having a dead web content process, reload it
+        if let tab = tab where tab.webContentProcessDidTerminate {
+            tab.webContentProcessDidTerminate = false
+            tab.reload()
+        }
+
         for delegate in delegates {
             delegate.get()?.tabManager(self, didSelectedTabChange: tab, previous: previous)
         }
@@ -509,6 +515,23 @@ extension TabManager : WKNavigationDelegate {
             }
         }
         UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+    }
+
+    /// Called when the WKWebView's content process has gone away. If this happens for the currently selected tab
+    /// then we immediately reload it. If this happens for a tab that is in the background, we mark the tab as
+    /// terminated so that we can reload it when it is activated.
+
+    func webViewWebContentProcessDidTerminate(webView: WKWebView) {
+        for tab in tabs {
+            if tab.webView === webView {
+                if let selectedTab = selectedTab where selectedTab == tab {
+                    tab.reload()
+                } else {
+                    tab.webContentProcessDidTerminate = true
+                }
+                return
+            }
+        }
     }
 }
 

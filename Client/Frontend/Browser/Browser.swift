@@ -49,6 +49,9 @@ class Browser: NSObject {
     var lastRequest: NSURLRequest? = nil
     var restoring: Bool = false
 
+    /// Set to true when webViewWebContentProcessDidTerminate is received for this tab
+    var webContentProcessDidTerminate: Bool = false
+
     /// The last title shown by this tab. Used by the tab tray to show titles for zombie tabs.
     var lastTitle: String?
 
