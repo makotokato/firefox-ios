@@ -233,6 +233,10 @@ class TabTrayController: UIViewController {
     var settingsButton: UIButton!
     var collectionViewTransitionSnapshot: UIView?
 
+    var isPrivateMode: Bool {
+        return privateMode
+    }
+
     private var privateMode: Bool = false {
         didSet {
             if #available(iOS 9, *) {
