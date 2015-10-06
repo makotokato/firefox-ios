@@ -411,7 +411,16 @@ class BrowserViewController: UIViewController {
             self.view.alpha = (profile.prefs.intForKey(IntroViewControllerSeenProfileKey) != nil) ? 1.0 : 0.0
         }
 
-        if activeCrashReporter?.previouslyCrashed ?? false {
+        // Only ask to restore tabs from a crash if we had non-home tabs or tabs with some kind of history in them
+        guard let tabsToRestore = tabManager.tabsToRestore() else { return }
+        var onlyNoHistoryTabs = true
+        tabsToRestore.forEach { savedTab in
+            if savedTab.sessionData?.urls.count > 1 {
+                onlyNoHistoryTabs = false
+            }
+        }
+
+        if activeCrashReporter?.previouslyCrashed ?? false && !onlyNoHistoryTabs {
             // Reset previous crash state
             activeCrashReporter?.resetPreviousCrashState()
 
