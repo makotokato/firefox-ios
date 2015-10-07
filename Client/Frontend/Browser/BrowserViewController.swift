@@ -413,23 +413,68 @@ class BrowserViewController: UIViewController {
             self.view.alpha = (profile.prefs.intForKey(IntroViewControllerSeenProfileKey) != nil) ? 1.0 : 0.0
         }
 
-        if activeCrashReporter?.previouslyCrashed ?? false {
-            // Reset previous crash state
-            activeCrashReporter?.resetPreviousCrashState()
+//        if activeCrashReporter?.previouslyCrashed ?? false {
+//            // Reset previous crash state
+//            activeCrashReporter?.resetPreviousCrashState()
+//
+//            let optedIntoCrashReporting = profile.prefs.boolForKey("crashreports.send.always")
+//            if optedIntoCrashReporting == nil {
+//                // Offer a chance to allow the user to opt into crash reporting
+//                showCrashOptInAlert()
+//            } else {
+//                showRestoreTabsAlert()
+//            }
+//        } else {
+//            restoreTabs()
+//        }
 
-            let crashPrompt = UIAlertView(
-                title: CrashPromptMessaging.Title,
-                message: CrashPromptMessaging.Description,
-                delegate: self,
-                cancelButtonTitle: CrashPromptMessaging.Negative,
-                otherButtonTitles: CrashPromptMessaging.Affirmative
-            )
-            crashPrompt.show()
-        } else {
-            restoreTabs()
-        }
+        showCrashOptInAlert()
 
         updateTabCountUsingTabManager(tabManager, animated: false)
+    }
+
+    private func showCrashOptInAlert() {
+        let alert = UIAlertController.crashOptInAlert(
+            sendReportCallback: { _ in
+                self.showRestoreTabsAlert()
+            },
+            alwaysSendCallback: { _ in
+                self.profile.prefs.setBool(true, forKey: "crashreports.send.always")
+                configureActiveCrashReporter(true)
+                self.showRestoreTabsAlert()
+            },
+            dontSendCallback: { _ in
+                // no-op: Do nothing if we don't want to send it
+                self.showRestoreTabsAlert()
+            },
+            neverSendCallback: { _ in
+                self.profile.prefs.setBool(false, forKey: "crashreports.send.always")
+                configureActiveCrashReporter(false)
+                self.showRestoreTabsAlert()
+            }
+        )
+        self.presentViewController(alert, animated: true, completion: nil)
+    }
+
+    private func showRestoreTabsAlert() {
+        func addAndSelect() {
+            let tab = tabManager.addTab()
+            tabManager.selectTab(tab)
+        }
+
+        let alert = UIAlertController.restoreTabsAlert(
+            okayCallback: { _ in
+                self.restoreTabs()
+                if self.tabManager.count == 0 {
+                    addAndSelect()
+                }
+            },
+            noCallback: { _ in
+                addAndSelect()
+            }
+        )
+
+        self.presentViewController(alert, animated: true, completion: nil)
     }
 
     private func restoreTabs() {
@@ -2166,36 +2211,6 @@ extension BrowserViewController: SessionRestoreHelperDelegate {
 
         if let tab = tabManager.selectedTab where tab.webView === browser.webView {
             updateUIForReaderHomeStateForTab(tab)
-        }
-    }
-}
-
-private struct CrashPromptMessaging {
-    static let Title = NSLocalizedString("Well, this is embarrassing.", comment: "Restore Tabs Prompt Title")
-    static let Description = NSLocalizedString("Looks like Firefox crashed previously. Would you like to restore your tabs?", comment: "Restore Tabs Prompt Description")
-    static let Affirmative = NSLocalizedString("Okay", comment: "Restore Tabs Affirmative Action")
-    static let Negative = NSLocalizedString("No", comment: "Restore Tabs Negative Action")
-}
-
-extension BrowserViewController: UIAlertViewDelegate {
-    private enum CrashPromptIndex: Int {
-        case Cancel = 0
-        case Restore = 1
-    }
-
-    func alertView(alertView: UIAlertView, clickedButtonAtIndex buttonIndex: Int) {
-        func addAndSelect() {
-            let tab = tabManager.addTab()
-            tabManager.selectTab(tab)
-        }
-
-        if buttonIndex == CrashPromptIndex.Restore.rawValue {
-            self.restoreTabs()
-            if tabManager.count == 0 {
-                addAndSelect()
-            }
-        } else {
-            addAndSelect()
         }
     }
 }
